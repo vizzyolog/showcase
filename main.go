@@ -53,9 +53,6 @@ func downloadFile(url string, filePath string) error {
 func main() {
 	newIAM := jwt.GetNewIAMToken()
 
-	// voice := yandexCLD.ReadAudioFile("sources/speech3.ogg")
-	// yandexCLD.SendPost(newIAM, voice)
-
 	tgToken := readTgTokenFromDisk()
 	bot, err := tgbotapi.NewBotAPI(tgToken)
 	if err != nil {
