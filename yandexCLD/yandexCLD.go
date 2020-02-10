@@ -21,7 +21,7 @@ func ReadAudioFile(file string) []byte {
 }
 
 //SendPost - отправляем байты
-func SendPost(iamToken string, voice []byte) string {
+func RecognizeVoice(iamToken string, voice []byte) string {
 	url := "https://stt.api.cloud.yandex.net/speech/v1/stt:recognize"
 	req, err := http.NewRequest("POST", url+"?"+"topic=general&folderId="+folderID, bytes.NewBuffer(voice))
 	if err != nil {
@@ -43,5 +43,4 @@ func SendPost(iamToken string, voice []byte) string {
 	}
 
 	return string(bodyBytes)
-
 }

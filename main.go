@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	jwt "github.com/vizzyolog/showcase/jwt"
@@ -74,25 +75,10 @@ func main() {
 		}
 
 		if update.Message.Voice != nil {
-			inVoice := update.Message.Voice
-			fileConfig := tgbotapi.FileConfig{
-				FileID: inVoice.FileID,
-			}
-			file, err := bot.GetFile(fileConfig)
-			if err != nil {
-				fmt.Println("Can't download the file", err)
-			}
+			go recognize(update.Message, bot, tgToken, newIAM)
+		}
 
-			linkfordownload := file.Link(tgToken)
-			downloadFile(linkfordownload, "tmp.ogg")
-
-			voice := yandexCLD.ReadAudioFile("tmp.ogg")
-			recoginzedText := yandexCLD.SendPost(newIAM, voice)
-
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, recoginzedText)
-			msg.ReplyToMessageID = update.Message.MessageID
-
-			bot.Send(msg)
+		if update.Message.Text != "" {
 
 		}
 		log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
@@ -103,4 +89,29 @@ func main() {
 		bot.Send(msg)
 	}
 
+}
+
+func recognize(msg *tgbotapi.Message, bot *tgbotapi.BotAPI, tgToken string, newIAM string) {
+	inVoice := msg.Voice
+	voiceFileConfig := tgbotapi.FileConfig{
+		FileID: inVoice.FileID,
+	}
+	file, err := bot.GetFile(voiceFileConfig)
+	if err != nil {
+		newMsg := tgbotapi.NewMessage(msg.Chat.ID, err.Error())
+		newMsg.ReplyToMessageID = msg.MessageID
+		bot.Send(newMsg)
+	}
+
+	linkfordownload := file.Link(tgToken)
+
+	downloadFile(linkfordownload, "tmp"+strconv.Itoa(msg.MessageID))
+
+	voice := yandexCLD.ReadAudioFile("tmp" + strconv.Itoa(msg.MessageID))
+	recoginzedText := yandexCLD.RecognizeVoice(newIAM, voice)
+
+	newMsg := tgbotapi.NewMessage(msg.Chat.ID, recoginzedText)
+	newMsg.ReplyToMessageID = msg.MessageID
+
+	bot.Send(newMsg)
 }
