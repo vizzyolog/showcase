@@ -1,2 +1,4 @@
 # showcase
-this is my telegram bot that can recognize speech using yandex cloud  
+Now this is a very simple and primitive example of how c works https://cloud.yandex.ru/services/speechkit.
+I decided to update my showcase regularly.
+I will be grateful for any feedback https://t.me/ChernovOleg
