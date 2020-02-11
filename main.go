@@ -53,14 +53,13 @@ func downloadFile(url string, filePath string) error {
 
 func main() {
 	newIAM := jwt.GetNewIAMToken()
-
 	tgToken := readTgTokenFromDisk()
+
 	bot, err := tgbotapi.NewBotAPI(tgToken)
 	if err != nil {
 		log.Panic(err)
 	}
-
-	bot.Debug = true
+	bot.Debug = false
 
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
@@ -75,27 +74,49 @@ func main() {
 			continue
 		}
 
-		if update.Message.Voice != nil {
+		switch {
+		case update.Message.Voice != nil:
+
 			go recognize(update.Message, bot, tgToken, newIAM)
+
+		case update.Message.Text != "":
+
+			go synthesize(update.Message, bot, newIAM)
+
 		}
 
-		if update.Message.Text != "" {
+	}
 
-		}
-		log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
+}
 
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
-		msg.ReplyToMessageID = update.Message.MessageID
+func synthesize(msg *tgbotapi.Message, bot *tgbotapi.BotAPI, newIAM string) {
+	bytes, err := yandexCLD.SynthesizeVoice(newIAM, msg.Text)
+	if err != nil {
+		newMsg := tgbotapi.NewMessage(msg.Chat.ID, err.Error())
+		newMsg.ReplyToMessageID = msg.MessageID
+		bot.Send(newMsg)
+	}
 
-		bot.Send(msg)
+	newFile := tgbotapi.FileBytes{
+		Name:  "newVoiceFromYandex",
+		Bytes: bytes,
+	}
+
+	newVoice := tgbotapi.NewVoiceUpload(msg.Chat.ID, newFile)
+	newMsg := tgbotapi.NewMessage(msg.Chat.ID, "text")
+	newMsg.ReplyMarkup = newVoice
+	_, err = bot.Send(newVoice)
+	if err != nil {
+		newMsg := tgbotapi.NewMessage(msg.Chat.ID, err.Error())
+		newMsg.ReplyToMessageID = msg.MessageID
+		bot.Send(newMsg)
 	}
 
 }
 
 func recognize(msg *tgbotapi.Message, bot *tgbotapi.BotAPI, tgToken string, newIAM string) {
-	inVoice := msg.Voice
 	voiceFileConfig := tgbotapi.FileConfig{
-		FileID: inVoice.FileID,
+		FileID: msg.Voice.FileID,
 	}
 	file, err := bot.GetFile(voiceFileConfig)
 	if err != nil {
@@ -109,10 +130,15 @@ func recognize(msg *tgbotapi.Message, bot *tgbotapi.BotAPI, tgToken string, newI
 	downloadFile(linkfordownload, "tmp"+strconv.Itoa(msg.MessageID))
 
 	voice := yandexCLD.ReadAudioFile("tmp" + strconv.Itoa(msg.MessageID))
-	recoginzedText := yandexCLD.RecognizeVoice(newIAM, voice)
+	recoginzedText, err := yandexCLD.RecognizeVoice(newIAM, voice)
+	if err != nil {
+		newMsg := tgbotapi.NewMessage(msg.Chat.ID, err.Error())
+		newMsg.ReplyToMessageID = msg.MessageID
+		bot.Send(newMsg)
 
+		return
+	}
 	newMsg := tgbotapi.NewMessage(msg.Chat.ID, recoginzedText)
 	newMsg.ReplyToMessageID = msg.MessageID
-
 	bot.Send(newMsg)
 }
