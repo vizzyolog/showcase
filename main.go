@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	jwt "github.com/vizzyolog/showcase/jwt"
@@ -53,6 +54,13 @@ func downloadFile(url string, filePath string) error {
 
 func main() {
 	newIAM := jwt.GetNewIAMToken()
+	go func() {
+		for {
+			time.Sleep(time.Hour)
+			newIAM = jwt.GetNewIAMToken()
+		}
+	}()
+
 	tgToken := readTgTokenFromDisk()
 
 	bot, err := tgbotapi.NewBotAPI(tgToken)
